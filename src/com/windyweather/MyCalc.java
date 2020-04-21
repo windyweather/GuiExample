@@ -85,8 +85,7 @@ public class MyCalc extends JFrame {
 				// if it's at the end.
 				//bot.mouseMove(100, 100);           
 				bot.mousePress(mask);     
-				bot.mouseRelease(mask);
-				
+			
 				try {
 					// hang for a bit before release
 				    Thread.sleep(100);
