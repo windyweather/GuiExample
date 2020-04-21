@@ -27,6 +27,8 @@ import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
 
 public class MyCalc extends JFrame {
+	
+	static final long serialVersionUID = 123456L;
 
 	private JPanel contentPane;
 	private JTextField txtNumber1;
@@ -59,10 +61,11 @@ public class MyCalc extends JFrame {
 	// a timer task to tick down the time
 	//
 	private class MyTimerTask extends TimerTask {
-		
+		@Override
 		public void run()
 		{
 			nTimerTics++;
+			tfTimerTics.setText(String.valueOf(nTimerTics));
 		}
 	}
 	
@@ -72,9 +75,7 @@ public class MyCalc extends JFrame {
 	public MyCalc() {
 		
 		bTimerRunning = false;
-		aTimer = new Timer();
-		timerTask = new MyTimerTask();
-		
+	
 		
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setBounds(100, 100, 543, 335);
@@ -133,7 +134,21 @@ public class MyCalc extends JFrame {
 			public void actionPerformed(ActionEvent e) {
 				Long msecsPerTic = (Long) spnMillisecondsPerTick.getValue();
 				System.out.println("btnStartTimer for "+String.valueOf(msecsPerTic) );
-				aTimer.schedule(timerTask, msecsPerTic, msecsPerTic);
+				try {
+					if ( bTimerRunning ) {
+						System.out.println("StartTimer already running" );
+						return;
+					}
+					aTimer = new Timer();
+					timerTask = new MyTimerTask();
+					aTimer.schedule(timerTask, msecsPerTic, msecsPerTic);
+					bTimerRunning = true;
+					System.out.println("StartTimer started" );
+				} catch (Exception ex)
+				{
+					// just ignore any exceptions
+					System.out.println("StartTimer exception" );
+				}
 			}
 		});
 		btnStartTimer.setFont(new Font("Tahoma", Font.PLAIN, 20));
@@ -143,7 +158,17 @@ public class MyCalc extends JFrame {
 		JButton btnStopTimer = new JButton("Stop Timer");
 		btnStopTimer.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
+				try {
+				if ( !bTimerRunning ) {
+					System.out.println("StopTimer not running" );
+					return;
+				}
 				timerTask.cancel();
+				bTimerRunning = false;
+				System.out.println("StopTimer cancelled" );
+				} catch (Exception ex) {
+					System.out.println("StopTimer exception" );
+				}
 			}
 		});
 		btnStopTimer.setFont(new Font("Tahoma", Font.PLAIN, 20));
