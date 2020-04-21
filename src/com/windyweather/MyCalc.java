@@ -11,6 +11,8 @@ import javax.swing.JTextField;
 import java.awt.GridBagConstraints;
 import javax.swing.SwingConstants;
 import java.awt.Insets;
+import java.awt.Robot;
+
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import java.awt.Font;
@@ -24,6 +26,7 @@ import javax.swing.BoxLayout;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
 import java.awt.event.ActionListener;
+import java.awt.event.InputEvent;
 import java.awt.event.ActionEvent;
 
 public class MyCalc extends JFrame {
@@ -39,6 +42,12 @@ public class MyCalc extends JFrame {
 	private boolean bTimerRunning;
 	private Timer aTimer;
 	private MyTimerTask timerTask;
+	private JTextField tfImpressPath;
+	private JTextField txtOptions;
+	private JTextField txtShowPath;
+	
+	private boolean bShowRunning;
+	private Process pShowProcess;
 	
 
 	/**
@@ -59,6 +68,7 @@ public class MyCalc extends JFrame {
 
 	//
 	// a timer task to tick down the time
+	// up the tics and click the mouse
 	//
 	private class MyTimerTask extends TimerTask {
 		@Override
@@ -66,19 +76,145 @@ public class MyCalc extends JFrame {
 		{
 			nTimerTics++;
 			tfTimerTics.setText(String.valueOf(nTimerTics));
+			// try to click the mouse here
+			try {
+				Robot bot = new Robot();
+				int mask = InputEvent.BUTTON1_DOWN_MASK;
+				// don't move the mouse in case the user wants to click on Stop Show or
+				// something else. It will be fine, the show will stop on the click
+				// if it's at the end.
+				//bot.mouseMove(100, 100);           
+				bot.mousePress(mask);     
+				bot.mouseRelease(mask);
+				
+				try {
+					// hang for a bit before release
+				    Thread.sleep(100);
+				}
+				catch(InterruptedException ex) {
+				    Thread.currentThread().interrupt();
+				    System.out.println("MyTimerTask interrupted");
+				}
+				bot.mouseRelease(mask);
+			}
+			catch (Exception e ) {
+				System.out.println("MyTimerTask Robot exception");
+			}
+			
+			// if the show is running, watch for it to end in a strange way
+			
+			if ( bShowRunning ) {
+				
+				try {
+					// so, rather than a wait, we check for exit value
+					// and if that tosses an exception, the process is
+					// still running. Ooooooookkkkkaaaaaayyyyyy No Problem
+					int exitValue = pShowProcess.exitValue();
+					// guess we don't do this to get rid of the not referened warning
+					//(void)exitValue;
+					// we don't care what the exit value was
+					exitValue = 0;
+					// but if we get here, then the show stopped, so
+					// if we stop it now, it won't need to wait, it will be fine
+					// we think.
+					stopShow();
+				} catch (Exception ex) {
+					// Process is still running. So just keep going until
+					// mouse clicks or something else stops the show
+				}
+			}
+		}
+	}
+	
+	public void startTimer( long msecsPerTic ) {
+		try {
+			if ( bTimerRunning ) {
+				System.out.println("startTimer already running" );
+				return;
+			}
+			aTimer = new Timer();
+			timerTask = new MyTimerTask();
+			aTimer.schedule(timerTask, msecsPerTic, msecsPerTic);
+			bTimerRunning = true;
+			System.out.println("startTimer started for "+String.valueOf(msecsPerTic) );
+		} catch (Exception ex)
+		{
+			// just ignore any exceptions
+			System.out.println("startTimer exception" );
+		}
+
+	}
+	
+	public void stopTimer() {
+		try {
+		if ( !bTimerRunning ) {
+			System.out.println("stopTimer not running" );
+			return;
+		}
+		timerTask.cancel();
+		bTimerRunning = false;
+		System.out.println("stopTimer cancelled" );
+		} catch (Exception ex) {
+			System.out.println("stopTimer exception" );
+		}
+	}
+	
+	public void startShowPlaying( String sImpress, String sOptions, String sShowPath ) {
+		
+		if ( bShowRunning ) {
+			
+			System.out.println("startShowPlaying already running");
+			return;
+		}
+		String cmdString = sImpress +" "+sOptions+" "+sShowPath;
+		try {
+			pShowProcess = Runtime.getRuntime().exec( cmdString );
+			System.out.println("startShowPlaying show started");
+			bShowRunning = true;
+			if ( bTimerRunning ) {
+				stopTimer();
+			}
+			startTimer( 5000 );
+		} catch (Exception ex ) {
+			System.out.println("startShowPlaying exception");
+		}
+
+	}
+	
+	public void stopShow() {
+		if ( !bShowRunning ) {
+			System.out.println("stopShow show not running");
+			return;
+		}
+		// we cannot use destroy() since that would leave the Impress show
+		// in a bad state. So all we can do is wait on the user to stop the
+		// show and then clean up.
+		
+		try {
+			// stop the mouse clicks
+			stopTimer();
+			System.out.println("stopShow waiting for you to stop the show");
+			pShowProcess.waitFor();
+			System.out.println("stopShow show not running");
+			bShowRunning = false;
+		} catch (Exception ex ) {
+			System.out.println("stopShow exception");
+			bShowRunning = false; // try to clean up
 		}
 	}
 	
 	/**
 	 * Create the frame.
 	 */
+	@SuppressWarnings("deprecation")
 	public MyCalc() {
 		
 		bTimerRunning = false;
+		bShowRunning = false;
 	
 		
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setBounds(100, 100, 543, 335);
+		setBounds(100, 100, 543, 527);
 		contentPane = new JPanel();
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		setContentPane(contentPane);
@@ -112,13 +248,13 @@ public class MyCalc extends JFrame {
 		lblTotal.setFont(new Font("Tahoma", Font.BOLD, 30));
 		contentPane.add(lblTotal);
 		
-		JSpinner spnMillisecondsPerTick = new JSpinner();
-		spnMillisecondsPerTick.setModel(new SpinnerNumberModel(new Long(100), new Long(100), new Long(999), new Long(50)));
-		spnMillisecondsPerTick.setFont(new Font("Tahoma", Font.PLAIN, 20));
-		spnMillisecondsPerTick.setBounds(321, 40, 77, 24);
-		contentPane.add(spnMillisecondsPerTick);
+		JSpinner spnSecsPerTic = new JSpinner();
+		spnSecsPerTic.setModel(new SpinnerNumberModel(new Long(5), new Long(1), new Long(99), new Long(1)));
+		spnSecsPerTic.setFont(new Font("Tahoma", Font.PLAIN, 20));
+		spnSecsPerTic.setBounds(321, 40, 77, 24);
+		contentPane.add(spnSecsPerTic);
 		
-		JLabel lblNewLabel = new JLabel("M Secs");
+		JLabel lblNewLabel = new JLabel("Secs");
 		lblNewLabel.setFont(new Font("Tahoma", Font.PLAIN, 20));
 		lblNewLabel.setBounds(422, 42, 77, 21);
 		contentPane.add(lblNewLabel);
@@ -132,23 +268,8 @@ public class MyCalc extends JFrame {
 		JButton btnStartTimer = new JButton("Start Timer");
 		btnStartTimer.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				Long msecsPerTic = (Long) spnMillisecondsPerTick.getValue();
-				System.out.println("btnStartTimer for "+String.valueOf(msecsPerTic) );
-				try {
-					if ( bTimerRunning ) {
-						System.out.println("StartTimer already running" );
-						return;
-					}
-					aTimer = new Timer();
-					timerTask = new MyTimerTask();
-					aTimer.schedule(timerTask, msecsPerTic, msecsPerTic);
-					bTimerRunning = true;
-					System.out.println("StartTimer started" );
-				} catch (Exception ex)
-				{
-					// just ignore any exceptions
-					System.out.println("StartTimer exception" );
-				}
+				Long msecsPerTic = (Long) spnSecsPerTic.getValue() * 1000;
+				startTimer( msecsPerTic );
 			}
 		});
 		btnStartTimer.setFont(new Font("Tahoma", Font.PLAIN, 20));
@@ -158,17 +279,7 @@ public class MyCalc extends JFrame {
 		JButton btnStopTimer = new JButton("Stop Timer");
 		btnStopTimer.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				try {
-				if ( !bTimerRunning ) {
-					System.out.println("StopTimer not running" );
-					return;
-				}
-				timerTask.cancel();
-				bTimerRunning = false;
-				System.out.println("StopTimer cancelled" );
-				} catch (Exception ex) {
-					System.out.println("StopTimer exception" );
-				}
+				stopTimer();
 			}
 		});
 		btnStopTimer.setFont(new Font("Tahoma", Font.PLAIN, 20));
@@ -206,6 +317,68 @@ public class MyCalc extends JFrame {
 		lblSumOfNumbers.setFont(new Font("Tahoma", Font.PLAIN, 20));
 		lblSumOfNumbers.setBounds(58, 188, 90, 21);
 		contentPane.add(lblSumOfNumbers);
+		
+		JLabel lblImpress = new JLabel("Impress");
+		lblImpress.setHorizontalAlignment(SwingConstants.RIGHT);
+		lblImpress.setFont(new Font("Tahoma", Font.PLAIN, 20));
+		lblImpress.setBounds(22, 301, 107, 21);
+		contentPane.add(lblImpress);
+		
+		JLabel lblOptions = new JLabel("Options");
+		lblOptions.setHorizontalAlignment(SwingConstants.RIGHT);
+		lblOptions.setFont(new Font("Tahoma", Font.PLAIN, 20));
+		lblOptions.setBounds(22, 332, 107, 21);
+		contentPane.add(lblOptions);
+		
+		JLabel lblShowpaths = new JLabel("ShowPath");
+		lblShowpaths.setHorizontalAlignment(SwingConstants.RIGHT);
+		lblShowpaths.setFont(new Font("Tahoma", Font.PLAIN, 20));
+		lblShowpaths.setBounds(22, 382, 107, 21);
+		contentPane.add(lblShowpaths);
+		
+		tfImpressPath = new JTextField();
+		tfImpressPath.setText("C:\\Program Files\\LibreOffice\\program\\soffice.exe");
+		tfImpressPath.setHorizontalAlignment(SwingConstants.LEFT);
+		tfImpressPath.setFont(new Font("Tahoma", Font.PLAIN, 20));
+		tfImpressPath.setColumns(10);
+		tfImpressPath.setBounds(149, 293, 338, 29);
+		contentPane.add(tfImpressPath);
+		
+		txtOptions = new JTextField();
+		txtOptions.setText("--impress --show");
+		txtOptions.setHorizontalAlignment(SwingConstants.LEFT);
+		txtOptions.setFont(new Font("Tahoma", Font.PLAIN, 20));
+		txtOptions.setColumns(10);
+		txtOptions.setBounds(149, 337, 149, 29);
+		contentPane.add(txtOptions);
+		
+		txtShowPath = new JTextField();
+		txtShowPath.setText("D:\\aaArtHarvesting\\zzLibreOffice\\ChainTests\\ShowTestOne.odp");
+		txtShowPath.setHorizontalAlignment(SwingConstants.LEFT);
+		txtShowPath.setFont(new Font("Tahoma", Font.PLAIN, 20));
+		txtShowPath.setColumns(10);
+		txtShowPath.setBounds(149, 378, 338, 29);
+		contentPane.add(txtShowPath);
+		
+		JButton btnStartShow = new JButton("Start Show");
+		btnStartShow.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				startShowPlaying( tfImpressPath.getText(), txtOptions.getText(), txtShowPath.getText() );
+			}
+		});
+		btnStartShow.setFont(new Font("Tahoma", Font.PLAIN, 20));
+		btnStartShow.setBounds(149, 421, 138, 29);
+		contentPane.add(btnStartShow);
+		
+		JButton btnStopShow = new JButton("Stop Show");
+		btnStopShow.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				stopShow();
+			}
+		});
+		btnStopShow.setFont(new Font("Tahoma", Font.PLAIN, 20));
+		btnStopShow.setBounds(306, 421, 138, 29);
+		contentPane.add(btnStopShow);
 		
 		btnAdd.addMouseListener(new MouseAdapter() {
 			@Override
