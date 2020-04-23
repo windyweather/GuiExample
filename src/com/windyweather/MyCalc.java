@@ -49,6 +49,35 @@ public class MyCalc extends JFrame {
 	private boolean bShowRunning;
 	private Process pShowProcess;
 	
+	private final String sImpressOnWindows = "C:\\Program Files\\LibreOffice\\program\\soffice.exe";
+	private final String sImpressOnLinux = "soffice";
+	private final String sOptionsOnWindows = "--impress --show";
+	private final String sOptionsOnLinux = "--impress --show";
+	private final String sShowPathOnWindows = "D:\\aaArtHarvesting\\zzLibreOffice\\ChainTests\\ShowTestOne.odp";
+	private final String sShowPathOnLinux = "/home/darrell/ImpressTests/ChainTests/ShowTestOne.odp";
+	// /home/darrell/ImpressTests/ChainTests/ShowTestOne.odp
+	
+	private boolean isOsWindows()
+	{
+		String osName = System.getProperty ("os.name");
+		if ( osName.contains("Windows") ) {
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
+	
+	private boolean isOsLinux()
+	{
+		String osName = System.getProperty ("os.name");
+		if ( osName.contains("Linux") ) {
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
 
 	/**
 	 * Launch the application.
@@ -176,6 +205,7 @@ public class MyCalc extends JFrame {
 			startTimer( 5000 );
 		} catch (Exception ex ) {
 			System.out.println("startShowPlaying exception");
+			System.out.println(cmdString);
 		}
 
 	}
@@ -237,7 +267,7 @@ public class MyCalc extends JFrame {
 		txtNumber2.setColumns(10);
 		
 		JButton btnAdd = new JButton("Add");
-		btnAdd.setFont(new Font("Tahoma", Font.PLAIN, 20));
+		btnAdd.setFont(new Font("Dialog", Font.BOLD, 16));
 		btnAdd.setBounds(41, 129, 107, 35);
 		contentPane.add(btnAdd);
 		
@@ -272,7 +302,7 @@ public class MyCalc extends JFrame {
 				startTimer( msecsPerTic );
 			}
 		});
-		btnStartTimer.setFont(new Font("Tahoma", Font.PLAIN, 20));
+		btnStartTimer.setFont(new Font("Dialog", Font.BOLD, 16));
 		btnStartTimer.setBounds(290, 85, 138, 29);
 		contentPane.add(btnStartTimer);
 		
@@ -282,7 +312,7 @@ public class MyCalc extends JFrame {
 				stopTimer();
 			}
 		});
-		btnStopTimer.setFont(new Font("Tahoma", Font.PLAIN, 20));
+		btnStopTimer.setFont(new Font("Dialog", Font.BOLD, 16));
 		btnStopTimer.setBounds(290, 126, 138, 29);
 		contentPane.add(btnStopTimer);
 		
@@ -293,7 +323,7 @@ public class MyCalc extends JFrame {
 				tfTimerTics.setText(String.valueOf(nTimerTics));
 			}
 		});
-		btnClearTics.setFont(new Font("Tahoma", Font.PLAIN, 20));
+		btnClearTics.setFont(new Font("Dialog", Font.BOLD, 16));
 		btnClearTics.setBounds(290, 227, 138, 29);
 		contentPane.add(btnClearTics);
 		
@@ -337,9 +367,9 @@ public class MyCalc extends JFrame {
 		contentPane.add(lblShowpaths);
 		
 		tfImpressPath = new JTextField();
-		tfImpressPath.setText("C:\\Program Files\\LibreOffice\\program\\soffice.exe");
+		tfImpressPath.setText("");
 		tfImpressPath.setHorizontalAlignment(SwingConstants.LEFT);
-		tfImpressPath.setFont(new Font("Tahoma", Font.PLAIN, 20));
+		tfImpressPath.setFont(new Font("Dialog", Font.PLAIN, 16));
 		tfImpressPath.setColumns(10);
 		tfImpressPath.setBounds(149, 293, 338, 29);
 		contentPane.add(tfImpressPath);
@@ -347,18 +377,28 @@ public class MyCalc extends JFrame {
 		txtOptions = new JTextField();
 		txtOptions.setText("--impress --show");
 		txtOptions.setHorizontalAlignment(SwingConstants.LEFT);
-		txtOptions.setFont(new Font("Tahoma", Font.PLAIN, 20));
+		txtOptions.setFont(new Font("Dialog", Font.PLAIN, 16));
 		txtOptions.setColumns(10);
-		txtOptions.setBounds(149, 337, 149, 29);
+		txtOptions.setBounds(149, 337, 338, 29);
 		contentPane.add(txtOptions);
 		
 		txtShowPath = new JTextField();
-		txtShowPath.setText("D:\\aaArtHarvesting\\zzLibreOffice\\ChainTests\\ShowTestOne.odp");
+		txtShowPath.setText("");
 		txtShowPath.setHorizontalAlignment(SwingConstants.LEFT);
-		txtShowPath.setFont(new Font("Tahoma", Font.PLAIN, 20));
+		txtShowPath.setFont(new Font("Dialog", Font.PLAIN, 16));
 		txtShowPath.setColumns(10);
 		txtShowPath.setBounds(149, 378, 338, 29);
 		contentPane.add(txtShowPath);
+		
+		if ( isOsWindows() ) {
+			tfImpressPath.setText(sImpressOnWindows);
+			txtOptions.setText(sOptionsOnWindows);
+			txtShowPath.setText(sShowPathOnWindows);
+		} else {
+			tfImpressPath.setText(sImpressOnLinux);
+			txtOptions.setText(sOptionsOnLinux);
+			txtShowPath.setText(sShowPathOnLinux);
+		}
 		
 		JButton btnStartShow = new JButton("Start Show");
 		btnStartShow.addActionListener(new ActionListener() {
@@ -366,7 +406,7 @@ public class MyCalc extends JFrame {
 				startShowPlaying( tfImpressPath.getText(), txtOptions.getText(), txtShowPath.getText() );
 			}
 		});
-		btnStartShow.setFont(new Font("Tahoma", Font.PLAIN, 20));
+		btnStartShow.setFont(new Font("Dialog", Font.BOLD, 16));
 		btnStartShow.setBounds(149, 421, 138, 29);
 		contentPane.add(btnStartShow);
 		
@@ -376,7 +416,7 @@ public class MyCalc extends JFrame {
 				stopShow();
 			}
 		});
-		btnStopShow.setFont(new Font("Tahoma", Font.PLAIN, 20));
+		btnStopShow.setFont(new Font("Dialog", Font.BOLD, 16));
 		btnStopShow.setBounds(306, 421, 138, 29);
 		contentPane.add(btnStopShow);
 		
