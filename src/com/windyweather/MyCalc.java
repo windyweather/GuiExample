@@ -207,6 +207,7 @@ public class MyCalc extends JFrame {
 	 */
 	@SuppressWarnings("deprecation")
 	public MyCalc() {
+		setResizable(false);
 		
 		bTimerRunning = false;
 		bShowRunning = false;
