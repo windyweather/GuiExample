@@ -19,6 +19,13 @@ import java.awt.Font;
 import java.awt.Color;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.File;
+import java.io.UnsupportedEncodingException;
+import java.net.MalformedURLException;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.net.URLDecoder;
+import java.security.CodeSource;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -45,6 +52,8 @@ public class MyCalc extends JFrame {
 	private JTextField tfImpressPath;
 	private JTextField txtOptions;
 	private JTextField txtShowPath;
+	private JButton btnWhere;
+	private JLabel lblStatus;
 	
 	private boolean bShowRunning;
 	private Process pShowProcess;
@@ -56,6 +65,13 @@ public class MyCalc extends JFrame {
 	private final String sShowPathOnWindows = "D:\\aaArtHarvesting\\zzLibreOffice\\ChainTests\\ShowTestOne.odp";
 	private final String sShowPathOnLinux = "/home/darrell/ImpressTests/ChainTests/ShowTestOne.odp";
 	// /home/darrell/ImpressTests/ChainTests/ShowTestOne.odp
+	
+	
+	void setStatus( String str ) {
+		
+		lblStatus.setText(str);
+	}
+	
 	
 	private boolean isOsWindows()
 	{
@@ -187,6 +203,9 @@ public class MyCalc extends JFrame {
 		}
 	}
 	
+	
+	
+	
 	public void startShowPlaying( String sImpress, String sOptions, String sShowPath ) {
 		
 		if ( bShowRunning ) {
@@ -198,7 +217,15 @@ public class MyCalc extends JFrame {
 		String cmdAry[] = {sImpress, sOptions, sShowPath};
 		try {
 			//pShowProcess = Runtime.getRuntime().exec( cmdString );
-			pShowProcess = Runtime.getRuntime().exec(cmdAry);
+			//pShowProcess = Runtime.getRuntime().exec(cmdAry);
+			String scriptPath = pathToOurJarFile();
+			if ( scriptPath.isEmpty() ) {
+				System.out.println("startShowPlaying we can't find ourselves");
+				return;
+			}
+			scriptPath = scriptPath + "launchImpress.bash "+cmdString;
+			System.out.println("startShowPlaying to "+scriptPath);
+			pShowProcess = Runtime.getRuntime().exec( scriptPath );
 			System.out.println("startShowPlaying show started");
 			bShowRunning = true;
 			if ( bTimerRunning ) {
@@ -234,6 +261,44 @@ public class MyCalc extends JFrame {
 		}
 	}
 	
+	/*
+	 * get a path to where we are. That is where is our JAR file?
+	 * So we can call a script to launch our impress and hide the errors.
+	 */
+	
+	public String pathToOurJarFile() {
+		
+		String jarDir = "";
+
+		try {
+		CodeSource codeSource = MyCalc.class.getProtectionDomain().getCodeSource();
+		File jarFile = new File(codeSource.getLocation().toURI().getPath());
+		jarDir = jarFile.getParentFile().getPath();
+		} catch (Exception ex) {
+			// ignore this, just return the empty jarDir
+			System.out.println( "pathToOurJarFile is unhappy "+ex.getMessage() );
+			jarDir = "";
+			return jarDir; // don't add separator on error
+		}
+		return jarDir+File.separator;
+	}
+	
+	
+	public void whereAreWe()
+	{
+		try {
+			String pathToUs;
+			
+			pathToUs = pathToOurJarFile();
+			
+			setStatus("We are "+pathToUs);
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			System.out.println("whereAreWe - exception "+e.getMessage() );
+			setStatus("whereAreWe exception");
+			//e.printStackTrace();
+		};
+	}
 	/**
 	 * Create the frame.
 	 */
@@ -275,7 +340,7 @@ public class MyCalc extends JFrame {
 		
 		JLabel lblTotal = new JLabel("Total");
 		lblTotal.setHorizontalAlignment(SwingConstants.RIGHT);
-		lblTotal.setBounds(10, 219, 175, 37);
+		lblTotal.setBounds(22, 176, 135, 37);
 		lblTotal.setForeground(new Color(30, 144, 255));
 		lblTotal.setFont(new Font("Tahoma", Font.BOLD, 30));
 		contentPane.add(lblTotal);
@@ -343,12 +408,6 @@ public class MyCalc extends JFrame {
 		tfTimerTics.setBounds(329, 177, 135, 29);
 		contentPane.add(tfTimerTics);
 		tfTimerTics.setColumns(10);
-		
-		JLabel lblSumOfNumbers = new JLabel("Sum");
-		lblSumOfNumbers.setHorizontalAlignment(SwingConstants.CENTER);
-		lblSumOfNumbers.setFont(new Font("Tahoma", Font.PLAIN, 20));
-		lblSumOfNumbers.setBounds(58, 188, 90, 21);
-		contentPane.add(lblSumOfNumbers);
 		
 		JLabel lblImpress = new JLabel("Impress");
 		lblImpress.setHorizontalAlignment(SwingConstants.RIGHT);
@@ -421,6 +480,21 @@ public class MyCalc extends JFrame {
 		btnStopShow.setFont(new Font("Dialog", Font.BOLD, 16));
 		btnStopShow.setBounds(306, 421, 138, 29);
 		contentPane.add(btnStopShow);
+		
+		btnWhere = new JButton("Where");
+		btnWhere.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				whereAreWe();
+			}
+		});
+		btnWhere.setFont(new Font("Dialog", Font.BOLD, 16));
+		btnWhere.setBounds(41, 238, 138, 29);
+		contentPane.add(btnWhere);
+		
+		lblStatus = new JLabel("Status");
+		lblStatus.setFont(new Font("Dialog", Font.BOLD, 14));
+		lblStatus.setBounds(22, 462, 509, 23);
+		contentPane.add(lblStatus);
 		
 		btnAdd.addMouseListener(new MouseAdapter() {
 			@Override
