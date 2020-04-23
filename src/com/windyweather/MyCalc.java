@@ -195,8 +195,10 @@ public class MyCalc extends JFrame {
 			return;
 		}
 		String cmdString = sImpress +" "+sOptions+" "+sShowPath;
+		String cmdAry[] = {sImpress, sOptions, sShowPath};
 		try {
-			pShowProcess = Runtime.getRuntime().exec( cmdString );
+			//pShowProcess = Runtime.getRuntime().exec( cmdString );
+			pShowProcess = Runtime.getRuntime().exec(cmdAry);
 			System.out.println("startShowPlaying show started");
 			bShowRunning = true;
 			if ( bTimerRunning ) {
@@ -204,7 +206,7 @@ public class MyCalc extends JFrame {
 			}
 			startTimer( 5000 );
 		} catch (Exception ex ) {
-			System.out.println("startShowPlaying exception");
+			System.out.println("startShowPlaying exception "+ex.getMessage() );
 			System.out.println(cmdString);
 		}
 
