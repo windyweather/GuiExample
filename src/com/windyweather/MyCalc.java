@@ -20,6 +20,8 @@ import java.awt.Color;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
+import java.io.FileWriter;
+import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
@@ -94,6 +96,12 @@ public class MyCalc extends JFrame {
 			return false;
 		}
 	}
+	//
+	// Do this in one place so we can easily turn it off later
+	//
+	private void printSysOut( String str ) {
+		System.out.println(str);
+	}
 
 	/**
 	 * Launch the application.
@@ -137,12 +145,12 @@ public class MyCalc extends JFrame {
 				}
 				catch(InterruptedException ex) {
 				    Thread.currentThread().interrupt();
-				    System.out.println("MyTimerTask interrupted");
+				    printSysOut("MyTimerTask interrupted");
 				}
 				bot.mouseRelease(mask);
 			}
 			catch (Exception e ) {
-				System.out.println("MyTimerTask Robot exception");
+				printSysOut("MyTimerTask Robot exception");
 			}
 			
 			// if the show is running, watch for it to end in a strange way
@@ -173,18 +181,18 @@ public class MyCalc extends JFrame {
 	public void startTimer( long msecsPerTic ) {
 		try {
 			if ( bTimerRunning ) {
-				System.out.println("startTimer already running" );
+				printSysOut("startTimer already running" );
 				return;
 			}
 			aTimer = new Timer();
 			timerTask = new MyTimerTask();
 			aTimer.schedule(timerTask, msecsPerTic, msecsPerTic);
 			bTimerRunning = true;
-			System.out.println("startTimer started for "+String.valueOf(msecsPerTic) );
+			printSysOut("startTimer started for "+String.valueOf(msecsPerTic) );
 		} catch (Exception ex)
 		{
 			// just ignore any exceptions
-			System.out.println("startTimer exception" );
+			printSysOut("startTimer exception" );
 		}
 
 	}
@@ -192,56 +200,132 @@ public class MyCalc extends JFrame {
 	public void stopTimer() {
 		try {
 		if ( !bTimerRunning ) {
-			System.out.println("stopTimer not running" );
+			printSysOut("stopTimer not running" );
 			return;
 		}
 		timerTask.cancel();
 		bTimerRunning = false;
-		System.out.println("stopTimer cancelled" );
+		printSysOut("stopTimer cancelled" );
 		} catch (Exception ex) {
-			System.out.println("stopTimer exception" );
+			printSysOut("stopTimer exception" );
 		}
 	}
 	
-	
-	
-	
-	public void startShowPlaying( String sImpress, String sOptions, String sShowPath ) {
+	/*
+	 * Getting around error on Linux. Need to launch by writing a script and launching that.
+	 */
+	public void startShowPlayingLinux( String sImpress, String sOptions, String sShowPath ) {
 		
 		if ( bShowRunning ) {
 			
-			System.out.println("startShowPlaying already running");
+			printSysOut("startShowPlaying already running");
 			return;
 		}
 		String cmdString = sImpress +" "+sOptions+" "+sShowPath;
-		String cmdAry[] = {sImpress, sOptions, sShowPath};
+
+		String scriptPath = "";
 		try {
-			//pShowProcess = Runtime.getRuntime().exec( cmdString );
-			//pShowProcess = Runtime.getRuntime().exec(cmdAry);
-			String scriptPath = pathToOurJarFile();
+			scriptPath = pathToOurJarFile();
 			if ( scriptPath.isEmpty() ) {
-				System.out.println("startShowPlaying we can't find ourselves");
+				printSysOut("startShowPlaying we can't find ourselves");
 				return;
 			}
-			scriptPath = scriptPath + "launchImpress.bash "+cmdString;
-			System.out.println("startShowPlaying to "+scriptPath);
+			scriptPath = scriptPath + "launchImpressShow.bash";
+			printSysOut("startShowPlaying to "+scriptPath);
+			
+			/*
+			 * write the script, since arguments don't appear to work.
+			 */
+			File scriptFile = new File(scriptPath);
+			
+			try {
+				if (scriptFile.exists()) {
+					scriptFile.delete();
+				}
+			} catch (Exception ex) {
+				printSysOut("startShowPlaying Error deleting launchscript "+scriptFile);
+				return;
+			}
+			/*
+			 * Write the script file here
+			 */
+			try {
+
+			    FileWriter fileWriter = new FileWriter(scriptFile);
+			    PrintWriter printWriter = new PrintWriter(fileWriter);
+			    printWriter.println("#!/bin/bash");
+			    printWriter.println("echo \"Start impress with args\"");
+			    printWriter.println(cmdString + " > /dev/null 2>&1");
+			    printWriter.println("echo \"Impress is done now\"");
+			    printWriter.println("exit 0");
+			    printWriter.println("");
+			    printWriter.close();
+
+	             boolean bval = scriptFile.setExecutable(true,false);
+	             printSysOut("startShowPlaying setExecutable "+ bval+"  "+scriptPath);
+			} catch (Exception ex) {
+				
+			}
+			/*
+			 * Launch the script to cover the impress error
+			 */
 			pShowProcess = Runtime.getRuntime().exec( scriptPath );
-			System.out.println("startShowPlaying show started");
+			printSysOut("startShowPlaying show started");
 			bShowRunning = true;
 			if ( bTimerRunning ) {
 				stopTimer();
 			}
 			startTimer( 5000 );
 		} catch (Exception ex ) {
-			System.out.println("startShowPlaying exception "+ex.getMessage() );
-			System.out.println(cmdString);
+			printSysOut("startShowPlayingLinux exception "+ex.getMessage() );
+			printSysOut(scriptPath);
+			printSysOut(cmdString);
 		}
 
 	}
 	
+	
+	/*
+	 * much easier on windows since it just works
+	 */
+	public void startShowPlayingWindows( String sImpress, String sOptions, String sShowPath ) {
+		
+		if ( bShowRunning ) {
+			
+			printSysOut("startShowPlaying already running");
+			return;
+		}
+		String cmdString = sImpress +" "+sOptions+" "+sShowPath;
+
+		try {
+			pShowProcess = Runtime.getRuntime().exec( cmdString );
+			printSysOut("startShowPlaying show started");
+			bShowRunning = true;
+			if ( bTimerRunning ) {
+				stopTimer();
+			}
+			startTimer( 5000 );
+		} catch (Exception ex ) {
+			printSysOut("startShowPlaying exception "+ex.getMessage() );
+			printSysOut(cmdString);
+		}
+
+	}
+	
+	/*
+	 * Two launch strategies to get around error on Linux
+	 */
+	public void startShowPlaying( String sImpress, String sOptions, String sShowPath ) {
+		if ( isOsLinux() ) {
+			startShowPlayingLinux( sImpress, sOptions, sShowPath );
+		} else {
+			startShowPlayingWindows( sImpress, sOptions, sShowPath );
+		}
+	}
+	
 	public void stopShow() {
 		if ( !bShowRunning ) {
-			System.out.println("stopShow show not running");
+			printSysOut("stopShow show not running");
 			return;
 		}
 		// we cannot use destroy() since that would leave the Impress show
@@ -251,12 +335,12 @@ public class MyCalc extends JFrame {
 		try {
 			// stop the mouse clicks
 			stopTimer();
-			System.out.println("stopShow waiting for you to stop the show");
+			printSysOut("stopShow waiting for you to stop the show");
 			pShowProcess.waitFor();
-			System.out.println("stopShow show not running");
+			printSysOut("stopShow show not running");
 			bShowRunning = false;
 		} catch (Exception ex ) {
-			System.out.println("stopShow exception");
+			printSysOut("stopShow exception");
 			bShowRunning = false; // try to clean up
 		}
 	}
@@ -276,7 +360,7 @@ public class MyCalc extends JFrame {
 		jarDir = jarFile.getParentFile().getPath();
 		} catch (Exception ex) {
 			// ignore this, just return the empty jarDir
-			System.out.println( "pathToOurJarFile is unhappy "+ex.getMessage() );
+			printSysOut( "pathToOurJarFile is unhappy "+ex.getMessage() );
 			jarDir = "";
 			return jarDir; // don't add separator on error
 		}
@@ -294,7 +378,7 @@ public class MyCalc extends JFrame {
 			setStatus("We are "+pathToUs);
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
-			System.out.println("whereAreWe - exception "+e.getMessage() );
+			printSysOut("whereAreWe - exception "+e.getMessage() );
 			setStatus("whereAreWe exception");
 			//e.printStackTrace();
 		};
