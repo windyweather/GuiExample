@@ -19,8 +19,15 @@ import java.awt.Font;
 import java.awt.Color;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
@@ -212,13 +219,89 @@ public class MyCalc extends JFrame {
 	}
 	
 	/*
+	 * example from https://www.javaworld.com/article/2071275/when-runtime-exec---won-t.html?page=2
+	 */
+	class StreamGobbler extends Thread
+	{
+	    InputStream is;
+	    String type;
+	    OutputStream os;
+	    
+	    StreamGobbler(InputStream is, String type)
+	    {
+	        this(is, type, null);
+	    }
+	    StreamGobbler(InputStream is, String type, OutputStream redirect)
+	    {
+	        this.is = is;
+	        this.type = type;
+	        this.os = redirect;
+	    }
+	    
+	    public void run()
+	    {
+	        try
+	        {
+	            PrintWriter pw = null;
+	            if (os != null)
+	                pw = new PrintWriter(os);
+	                
+	            InputStreamReader isr = new InputStreamReader(is);
+	            BufferedReader br = new BufferedReader(isr);
+	            String line=null;
+	            while ( (line = br.readLine()) != null)
+	            {
+	                if (pw != null)
+	                    pw.println(line);
+	                System.out.println(type + ">" + line);    
+	            }
+	            if (pw != null)
+	                pw.flush();
+	        } catch (IOException ioe)
+	            {
+	            ioe.printStackTrace();  
+	            }
+	    }
+	}
+	
+	public void launchProgram( String cmdString ) {
+	    try
+	    {            
+	        PrintStream fos = System.out;
+	        Runtime rt = Runtime.getRuntime();
+	        Process proc = rt.exec("java jecho 'Hello World'");
+	        // any error message?
+	        StreamGobbler errorGobbler = new 
+	            StreamGobbler(proc.getErrorStream(), "ERROR");            
+	        
+	        // any output?
+	        StreamGobbler outputGobbler = new 
+	            StreamGobbler(proc.getInputStream(), "OUTPUT", fos);
+	            
+	        // kick them off
+	        errorGobbler.start();
+	        outputGobbler.start();
+	                                
+	        // any error???
+	        int exitVal = proc.waitFor();
+	        System.out.println("ExitValue: " + exitVal);
+	        fos.flush();
+	        fos.close();        
+	    } catch (Throwable t)
+	      {
+	        t.printStackTrace();
+	      }
+	}
+	
+	
+	/*
 	 * Getting around error on Linux. Need to launch by writing a script and launching that.
 	 */
 	public void startShowPlayingLinux( String sImpress, String sOptions, String sShowPath ) {
 		
 		if ( bShowRunning ) {
 			
-			printSysOut("startShowPlaying already running");
+			printSysOut("startShowPlayingLinux already running");
 			return;
 		}
 		String cmdString = sImpress +" "+sOptions+" "+sShowPath;
@@ -227,11 +310,11 @@ public class MyCalc extends JFrame {
 		try {
 			scriptPath = pathToOurJarFile();
 			if ( scriptPath.isEmpty() ) {
-				printSysOut("startShowPlaying we can't find ourselves");
+				printSysOut("startShowPlayingLinux we can't find ourselves");
 				return;
 			}
 			scriptPath = scriptPath + "launchImpressShow.bash";
-			printSysOut("startShowPlaying to "+scriptPath);
+			printSysOut("startShowPlayingLinux to "+scriptPath);
 			
 			/*
 			 * write the script, since arguments don't appear to work.
@@ -243,7 +326,7 @@ public class MyCalc extends JFrame {
 					scriptFile.delete();
 				}
 			} catch (Exception ex) {
-				printSysOut("startShowPlaying Error deleting launchscript "+scriptFile);
+				printSysOut("startShowPlayingLinux Error deleting launchscript "+scriptFile);
 				return;
 			}
 			/*
@@ -262,15 +345,17 @@ public class MyCalc extends JFrame {
 			    printWriter.close();
 
 	             boolean bval = scriptFile.setExecutable(true,false);
-	             printSysOut("startShowPlaying setExecutable "+ bval+"  "+scriptPath);
+	             printSysOut("startShowPlayingLinux setExecutable "+ bval+"  "+scriptPath);
 			} catch (Exception ex) {
 				
 			}
 			/*
 			 * Launch the script to cover the impress error
 			 */
-			pShowProcess = Runtime.getRuntime().exec( scriptPath );
-			printSysOut("startShowPlaying show started");
+			//pShowProcess = Runtime.getRuntime().exec( scriptPath );
+			String [] cmdAry = new String[] {System.getenv("SHELL"),"-c",scriptPath};
+			pShowProcess = Runtime.getRuntime().exec( cmdAry );
+			printSysOut("startShowPlayingLinux show started "+cmdString);
 			bShowRunning = true;
 			if ( bTimerRunning ) {
 				stopTimer();
@@ -292,21 +377,21 @@ public class MyCalc extends JFrame {
 		
 		if ( bShowRunning ) {
 			
-			printSysOut("startShowPlaying already running");
+			printSysOut("startShowPlayingWindows already running");
 			return;
 		}
 		String cmdString = sImpress +" "+sOptions+" "+sShowPath;
 
 		try {
 			pShowProcess = Runtime.getRuntime().exec( cmdString );
-			printSysOut("startShowPlaying show started");
+			printSysOut("startShowPlayingWindows show started");
 			bShowRunning = true;
 			if ( bTimerRunning ) {
 				stopTimer();
 			}
 			startTimer( 5000 );
 		} catch (Exception ex ) {
-			printSysOut("startShowPlaying exception "+ex.getMessage() );
+			printSysOut("startShowPlayingWindows exception "+ex.getMessage() );
 			printSysOut(cmdString);
 		}
 
@@ -317,6 +402,7 @@ public class MyCalc extends JFrame {
 	 */
 	public void startShowPlaying( String sImpress, String sOptions, String sShowPath ) {
 		if ( isOsLinux() ) {
+		//if ( false ) {
 			startShowPlayingLinux( sImpress, sOptions, sShowPath );
 		} else {
 			startShowPlayingWindows( sImpress, sOptions, sShowPath );
