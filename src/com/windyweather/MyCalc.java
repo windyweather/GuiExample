@@ -263,13 +263,17 @@ public class MyCalc extends JFrame {
 	            }
 	    }
 	}
-	
+	/*
+	 * more example code from https://www.javaworld.com/article/2071275/when-runtime-exec---won-t.html
+	 */
 	public void launchProgram( String cmdString ) {
 	    try
 	    {            
 	        PrintStream fos = System.out;
+	        printSysOut("launchProgram before "+cmdString);
 	        Runtime rt = Runtime.getRuntime();
-	        Process proc = rt.exec("java jecho 'Hello World'");
+	        printSysOut("launchProgram after");
+	        Process proc = rt.exec(cmdString);
 	        // any error message?
 	        StreamGobbler errorGobbler = new 
 	            StreamGobbler(proc.getErrorStream(), "ERROR");            
@@ -292,7 +296,62 @@ public class MyCalc extends JFrame {
 	        t.printStackTrace();
 	      }
 	}
+
+	/*
+	 * Not using the script right now
+	 */
+	/*
+	 * Write a script to surround command
+	 */
 	
+	public String writeLaunchScript(String cmdString ) {
+
+
+		String scriptPath = "";
+		scriptPath = pathToOurJarFile();
+		if ( scriptPath.isEmpty() ) {
+			printSysOut("startShowPlayingLinux we can't find ourselves");
+			return "";
+		}
+		scriptPath = scriptPath + "launchImpressShow.bash";
+		printSysOut("writeLaunchScript to "+scriptPath);
+		
+		//
+		 // write the script, since arguments don't appear to work.
+		 //
+		File scriptFile = new File(scriptPath);
+		
+		try {
+			if (scriptFile.exists()) {
+				scriptFile.delete();
+			}
+		} catch (Exception ex) {
+			printSysOut("writeLaunchScript Error deleting launchscript "+scriptFile);
+			return "";
+		}
+		//
+		 // Write the script file here
+		 //
+		try {
+
+		    FileWriter fileWriter = new FileWriter(scriptFile);
+		    PrintWriter printWriter = new PrintWriter(fileWriter);
+		    printWriter.println("#!/bin/bash");
+		    printWriter.println("echo \"Start impress with args\"");
+		    printWriter.println(cmdString + " > /dev/null 2>&1");
+		    printWriter.println("echo \"Impress is done now\"");
+		    printWriter.println("exit 0");
+		    printWriter.println("");
+		    printWriter.close();
+
+             boolean bval = scriptFile.setExecutable(true,false);
+             printSysOut("startShowPlayingLinux setExecutable "+ bval+"  "+scriptPath);
+		} catch (Exception ex) {
+			printSysOut("writeLaunchScript error writng launchScript");
+			return "";
+		}
+		return scriptPath; // success, script is written
+	}
 	
 	/*
 	 * Getting around error on Linux. Need to launch by writing a script and launching that.
@@ -305,56 +364,32 @@ public class MyCalc extends JFrame {
 			return;
 		}
 		String cmdString = sImpress +" "+sOptions+" "+sShowPath;
-
-		String scriptPath = "";
+		
+		/*
+		 * if using script, then write the script and return the path
+		 * Launch the script to cover the impress error
+		 */
+		if ( false ) { // not using the script now
+		String scriptPath = writeLaunchScript( cmdString );
 		try {
-			scriptPath = pathToOurJarFile();
-			if ( scriptPath.isEmpty() ) {
-				printSysOut("startShowPlayingLinux we can't find ourselves");
-				return;
-			}
-			scriptPath = scriptPath + "launchImpressShow.bash";
-			printSysOut("startShowPlayingLinux to "+scriptPath);
-			
+			pShowProcess = Runtime.getRuntime().exec( scriptPath );
+		} catch (Exception ex) {
+			printSysOut("startShowPlayingLinux exception "+ex.getMessage() );
+			printSysOut(scriptPath);
+		}
+		}
+		/* Another dead end
+		String [] cmdAry = new String[] {System.getenv("SHELL"),"-c",scriptPath};
+		pShowProcess = Runtime.getRuntime().exec( cmdAry );
+		*/
+		/*
+		 * Just try to launch something simple like /usr/bin/xed and see if that works
+		 */
+		try {
 			/*
-			 * write the script, since arguments don't appear to work.
+			 * Try the raw string first rather than the script
 			 */
-			File scriptFile = new File(scriptPath);
-			
-			try {
-				if (scriptFile.exists()) {
-					scriptFile.delete();
-				}
-			} catch (Exception ex) {
-				printSysOut("startShowPlayingLinux Error deleting launchscript "+scriptFile);
-				return;
-			}
-			/*
-			 * Write the script file here
-			 */
-			try {
-
-			    FileWriter fileWriter = new FileWriter(scriptFile);
-			    PrintWriter printWriter = new PrintWriter(fileWriter);
-			    printWriter.println("#!/bin/bash");
-			    printWriter.println("echo \"Start impress with args\"");
-			    printWriter.println(cmdString + " > /dev/null 2>&1");
-			    printWriter.println("echo \"Impress is done now\"");
-			    printWriter.println("exit 0");
-			    printWriter.println("");
-			    printWriter.close();
-
-	             boolean bval = scriptFile.setExecutable(true,false);
-	             printSysOut("startShowPlayingLinux setExecutable "+ bval+"  "+scriptPath);
-			} catch (Exception ex) {
-				
-			}
-			/*
-			 * Launch the script to cover the impress error
-			 */
-			//pShowProcess = Runtime.getRuntime().exec( scriptPath );
-			String [] cmdAry = new String[] {System.getenv("SHELL"),"-c",scriptPath};
-			pShowProcess = Runtime.getRuntime().exec( cmdAry );
+			launchProgram( cmdString );
 			printSysOut("startShowPlayingLinux show started "+cmdString);
 			bShowRunning = true;
 			if ( bTimerRunning ) {
@@ -363,11 +398,11 @@ public class MyCalc extends JFrame {
 			startTimer( 5000 );
 		} catch (Exception ex ) {
 			printSysOut("startShowPlayingLinux exception "+ex.getMessage() );
-			printSysOut(scriptPath);
+			//printSysOut(scriptPath);
 			printSysOut(cmdString);
 		}
 
-	}
+	} // end of startShowPlayingLinux
 	
 	
 	/*
@@ -475,6 +510,7 @@ public class MyCalc extends JFrame {
 	@SuppressWarnings("deprecation")
 	public MyCalc() {
 		setResizable(false);
+		setTitle("GuiExample Program");
 		
 		bTimerRunning = false;
 		bShowRunning = false;
