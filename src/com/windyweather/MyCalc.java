@@ -35,6 +35,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.security.CodeSource;
+import java.util.Arrays;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -266,14 +267,14 @@ public class MyCalc extends JFrame {
 	/*
 	 * more example code from https://www.javaworld.com/article/2071275/when-runtime-exec---won-t.html
 	 */
-	public void launchProgram( String cmdString ) {
+	public void launchProgram( String[] cmdArray ) {
 	    try
 	    {            
 	        PrintStream fos = System.out;
-	        printSysOut("launchProgram before "+cmdString);
+	        printSysOut("launchProgram before "+cmdArray);
 	        Runtime rt = Runtime.getRuntime();
 	        printSysOut("launchProgram after");
-	        Process proc = rt.exec(cmdString);
+	        Process proc = rt.exec(cmdArray);
 	        // any error message?
 	        StreamGobbler errorGobbler = new 
 	            StreamGobbler(proc.getErrorStream(), "ERROR");            
@@ -354,6 +355,46 @@ public class MyCalc extends JFrame {
 	}
 	
 	/*
+	 * Build the string array of the command, options and path and clean up options
+	 * we are using an array to preserve and pass through spaces in Impress path and show path.
+	 * Also any special characters should be passed along more robustly using String[] rather
+	 * than just a string for the whole thing.
+	 */
+	public String [] buildCommandArray( String sImpress, String sOptions, String sShowPath ) {
+		
+		String [] cmdArray = {sImpress};
+		String [] cmdArray2;
+		String [] cmdArray3;
+		// leave impress path alone. Note spaces "\Program Files\" are present on Windows
+		// however, options are user-typed. So remove any extra blanks and bust up into
+		// individual strings.
+		String [] saOptions = {};
+		if ( !sOptions.isBlank() && !sOptions.isEmpty() ) {
+			
+			try {
+				saOptions = sOptions.split(" ");
+				
+			} catch ( Exception ex ) {
+				saOptions[0] = sOptions; // let user deal with the issue
+				printSysOut("buildCommandArray problem with splitting options string");
+			}
+		}
+		// add options if we have some
+		if ( saOptions.length != 0  ) {
+			// left as an exercise for the reader
+			cmdArray2 = Arrays.copyOf(cmdArray, cmdArray.length + saOptions.length);
+			System.arraycopy(saOptions, 0, cmdArray2, cmdArray.length, saOptions.length);
+		} else {
+			cmdArray2 = cmdArray;
+		}
+		// finally add the show path and leave spaces in it
+		int N = cmdArray2.length;
+		cmdArray3 = Arrays.copyOf(cmdArray2, N + 1);
+		cmdArray3[N] = sShowPath;
+		return cmdArray3;
+	}
+	
+	/*
 	 * Getting around error on Linux. Need to launch by writing a script and launching that.
 	 */
 	public void startShowPlayingLinux( String sImpress, String sOptions, String sShowPath ) {
@@ -363,8 +404,15 @@ public class MyCalc extends JFrame {
 			printSysOut("startShowPlayingLinux already running");
 			return;
 		}
+		// for information only.
+		// not used to launch the program
 		String cmdString = sImpress +" "+sOptions+" "+sShowPath;
 		
+		/*
+		 * deal with most cases of stray strings and attempt to deal with 
+		 * spaces, dashes and parenthesis in the show path
+		 */
+		String[] cmdArray = buildCommandArray( sImpress, sOptions, sShowPath );
 		/*
 		 * if using script, then write the script and return the path
 		 * Launch the script to cover the impress error
@@ -389,7 +437,8 @@ public class MyCalc extends JFrame {
 			/*
 			 * Try the raw string first rather than the script
 			 */
-			launchProgram( cmdString );
+			//launchProgram( cmdArray );
+			pShowProcess = Runtime.getRuntime().exec( cmdArray );
 			printSysOut("startShowPlayingLinux show started "+cmdString);
 			bShowRunning = true;
 			if ( bTimerRunning ) {
